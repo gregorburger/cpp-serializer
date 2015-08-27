@@ -33,28 +33,23 @@ struct sub_entry : public ientry {
     void print(void *v) const override {
         KLASS *k = (KLASS*) v;
         T *p = &(k->*member);
-        //static_assert(std::is_same<T, texture>::value, "gag");
         p->print();//p);
-        //k->*member.print(p);
     }
 };
 
-template <typename KLASS>
 struct serializable {
-    virtual ~serializable() {
-        static_assert(std::is_base_of<serializable, KLASS>::value, "gag");
-    }
+    virtual ~serializable() {}
 
-    template <typename T>
-    typename std::enable_if<std::is_base_of<serializable<T>, T>::value>::type
+    template <typename KLASS, typename T>
+    typename std::enable_if<std::is_base_of<serializable, T>::value>::type
     add_entry(T KLASS::* member) {
         //7std::cout << "base" << std::endl;
         auto e = new sub_entry<KLASS, T>(member);
         entries.push_back(std::shared_ptr<ientry>(e));
     }
 
-    template <typename T>
-    typename std::enable_if<!std::is_base_of<serializable<T>, T>::value>::type
+    template <typename KLASS, typename T>
+    typename std::enable_if<!std::is_base_of<serializable, T>::value>::type
     add_entry(T KLASS::* member) {
         //std::cout << "not base" << std::endl;
         auto e = new entry<KLASS, T>(member);
@@ -71,7 +66,7 @@ struct serializable {
     std::vector<std::shared_ptr<const ientry>> entries;
 };
 
-struct picture : public serializable<picture> {
+struct picture : public serializable {
 
     picture() : text("original smart") {
         add_entry(&picture::text);
@@ -79,8 +74,8 @@ struct picture : public serializable<picture> {
     std::string text;
 };
 
-struct texture : public serializable<texture> {
-    virtual ~texture(){}
+struct texture : public serializable {
+
     texture() : width(640), height(480) {
         add_entry(&texture::width);
         add_entry(&texture::height);
@@ -88,9 +83,8 @@ struct texture : public serializable<texture> {
     int width, height;
 };
 
-struct container : public serializable<container> {
+struct container : public serializable {
 
-    virtual ~container(){}
     container() : float_member(3.142f), int_member(42) {
         add_entry(&container::float_member);
         add_entry(&container::int_member);
@@ -104,9 +98,17 @@ struct container : public serializable<container> {
     picture p;
 };
 
+struct derived_container : public container {
+
+    derived_container() : member(10) {
+        add_entry(&derived_container::member);
+    }
+    int member;
+};
+
 
 int main() {
-    container c;
+    derived_container c;
     c.print();
     return 0;
 }
